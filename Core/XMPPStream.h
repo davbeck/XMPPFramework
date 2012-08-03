@@ -806,6 +806,7 @@ typedef enum XMPPStreamErrorCode XMPPStreamErrorCode;
  * If you have need to modify an element for any reason,
  * you should copy the element first, and then modify and use the copy.
 **/
+- (void)xmppStream:(XMPPStream *)sender didReceiveElement:(NSXMLElement *)element;
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)iq;
 - (void)xmppStream:(XMPPStream *)sender didReceiveMessage:(XMPPMessage *)message;
 - (void)xmppStream:(XMPPStream *)sender didReceivePresence:(XMPPPresence *)presence;
@@ -851,6 +852,8 @@ typedef enum XMPPStreamErrorCode XMPPStreamErrorCode;
  * These methods may be used to listen for certain events (such as an unavailable presence having been sent),
  * or for general logging purposes. (E.g. a central history logging mechanism).
 **/
+- (void)xmppStream:(XMPPStream *)sender didSendString:(NSString *)string;
+- (void)xmppStream:(XMPPStream *)sender didSendElement:(NSXMLElement *)element;
 - (void)xmppStream:(XMPPStream *)sender didSendIQ:(XMPPIQ *)iq;
 - (void)xmppStream:(XMPPStream *)sender didSendMessage:(XMPPMessage *)message;
 - (void)xmppStream:(XMPPStream *)sender didSendPresence:(XMPPPresence *)presence;

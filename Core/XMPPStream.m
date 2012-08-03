@@ -1249,13 +1249,8 @@ enum XMPPStreamConfig
 			}
 			else
 			{
-				NSString *termStr = @"</stream:stream>";
-				NSData *termData = [termStr dataUsingEncoding:NSUTF8StringEncoding];
-				
-				XMPPLogSend(@"SEND: %@", termStr);
-				numberOfBytesSent += [termData length];
-				
-				[asyncSocket writeData:termData withTimeout:TIMEOUT_XMPP_WRITE tag:TAG_XMPP_WRITE_STREAM];
+                [self sendString:@"</stream:stream>" withTag:TAG_XMPP_WRITE_STREAM];
+                
 				[asyncSocket disconnectAfterWriting];
 				
 				// Everthing will be handled in socketDidDisconnect:withError:
@@ -1342,14 +1337,7 @@ enum XMPPStreamConfig
 	
 	NSString *starttls = @"<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>";
 	
-	NSData *outgoingData = [starttls dataUsingEncoding:NSUTF8StringEncoding];
-	
-	XMPPLogSend(@"SEND: %@", starttls);
-	numberOfBytesSent += [outgoingData length];
-	
-	[asyncSocket writeData:outgoingData
-			   withTimeout:TIMEOUT_XMPP_WRITE
-					   tag:TAG_XMPP_WRITE_STREAM];
+	[self sendString:starttls withTag:TAG_XMPP_WRITE_STREAM];
 }
 
 - (BOOL)secureConnection:(NSError **)errPtr
@@ -1508,15 +1496,7 @@ enum XMPPStreamConfig
 		[iqElement addAttributeWithName:@"type" stringValue:@"set"];
 		[iqElement addChild:queryElement];
 		
-		NSString *outgoingStr = [iqElement compactXMLString];
-		NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-		
-		XMPPLogSend(@"SEND: %@", outgoingStr);
-		numberOfBytesSent += [outgoingData length];
-		
-		[asyncSocket writeData:outgoingData
-		           withTimeout:TIMEOUT_XMPP_WRITE
-		                   tag:TAG_XMPP_WRITE_STREAM];
+		[self doSendElement:iqElement withTag:TAG_XMPP_WRITE_STREAM];
 		
 		// Update state
 		state = STATE_XMPP_REGISTERING;
@@ -2061,15 +2041,7 @@ enum XMPPStreamConfig
 	NSAssert(dispatch_get_current_queue() == xmppQueue, @"Invoked on incorrect queue");
 	NSAssert(state == STATE_XMPP_CONNECTED, @"Invoked with incorrect state");
 	
-	NSString *outgoingStr = [iq compactXMLString];
-	NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-	
-	XMPPLogSend(@"SEND: %@", outgoingStr);
-	numberOfBytesSent += [outgoingData length];
-	
-	[asyncSocket writeData:outgoingData
-	           withTimeout:TIMEOUT_XMPP_WRITE
-	                   tag:tag];
+	[self doSendElement:iq withTag:tag];
 	
 	[multicastDelegate xmppStream:self didSendIQ:iq];
 }
@@ -2079,15 +2051,7 @@ enum XMPPStreamConfig
 	NSAssert(dispatch_get_current_queue() == xmppQueue, @"Invoked on incorrect queue");
 	NSAssert(state == STATE_XMPP_CONNECTED, @"Invoked with incorrect state");
 	
-	NSString *outgoingStr = [message compactXMLString];
-	NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-	
-	XMPPLogSend(@"SEND: %@", outgoingStr);
-	numberOfBytesSent += [outgoingData length];
-	
-	[asyncSocket writeData:outgoingData
-	           withTimeout:TIMEOUT_XMPP_WRITE
-	                   tag:tag];
+	[self doSendElement:message withTag:tag];
 	
 	[multicastDelegate xmppStream:self didSendMessage:message];
 }
@@ -2097,15 +2061,7 @@ enum XMPPStreamConfig
 	NSAssert(dispatch_get_current_queue() == xmppQueue, @"Invoked on incorrect queue");
 	NSAssert(state == STATE_XMPP_CONNECTED, @"Invoked with incorrect state");
 	
-	NSString *outgoingStr = [presence compactXMLString];
-	NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-	
-	XMPPLogSend(@"SEND: %@", outgoingStr);
-	numberOfBytesSent += [outgoingData length];
-	
-	[asyncSocket writeData:outgoingData
-	           withTimeout:TIMEOUT_XMPP_WRITE
-	                   tag:tag];
+	[self doSendElement:presence withTag:tag];
 	
 	// Update myPresence if this is a normal presence element.
 	// In other words, ignore presence subscription stuff, MUC room stuff, etc.
@@ -2125,20 +2081,44 @@ enum XMPPStreamConfig
 	[multicastDelegate xmppStream:self didSendPresence:presence];
 }
 
-- (void)continueSendElement:(NSXMLElement *)element withTag:(long)tag
+- (void)sendData:(NSData *)outgoingData withTag:(long)tag
 {
-	NSAssert(dispatch_get_current_queue() == xmppQueue, @"Invoked on incorrect queue");
-	NSAssert(state == STATE_XMPP_CONNECTED, @"Invoked with incorrect state");
-	
-	NSString *outgoingStr = [element compactXMLString];
+    [asyncSocket writeData:outgoingData
+	           withTimeout:TIMEOUT_XMPP_WRITE
+	                   tag:tag];
+}
+
+- (void)sendString:(NSString *)outgoingStr withTag:(long)tag
+{
 	NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
 	
 	XMPPLogSend(@"SEND: %@", outgoingStr);
 	numberOfBytesSent += [outgoingData length];
 	
-	[asyncSocket writeData:outgoingData
-	           withTimeout:TIMEOUT_XMPP_WRITE
-	                   tag:tag];
+	[self sendData:outgoingData withTag:tag];
+    
+    [multicastDelegate xmppStream:self didSendString:outgoingStr];
+}
+
+- (void)doSendElement:(NSXMLElement *)element withTag:(long)tag
+{
+    NSString *outgoingStr = [element compactXMLString];
+	NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
+	
+	XMPPLogSend(@"SEND: %@", outgoingStr);
+	numberOfBytesSent += [outgoingData length];
+	
+	[self sendData:outgoingData withTag:tag];
+    
+    [multicastDelegate xmppStream:self didSendElement:element];
+}
+
+- (void)continueSendElement:(NSXMLElement *)element withTag:(long)tag
+{
+	NSAssert(dispatch_get_current_queue() == xmppQueue, @"Invoked on incorrect queue");
+	NSAssert(state == STATE_XMPP_CONNECTED, @"Invoked with incorrect state");
+	
+	[self doSendElement:element withTag:tag];
 }
 
 /**
@@ -2277,15 +2257,7 @@ enum XMPPStreamConfig
 		
 		if (state == STATE_XMPP_AUTH)
 		{
-			NSString *outgoingStr = [element compactXMLString];
-			NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-			
-			XMPPLogSend(@"SEND: %@", outgoingStr);
-			numberOfBytesSent += [outgoingData length];
-			
-			[asyncSocket writeData:outgoingData
-			           withTimeout:TIMEOUT_XMPP_WRITE
-			                   tag:TAG_XMPP_WRITE_STREAM];
+            [self doSendElement:element withTag:-1];
 		}
 		else
 		{
@@ -2667,15 +2639,8 @@ enum XMPPStreamConfig
 	{
 		// TCP connection was just opened - We need to include the opening XML stanza
 		NSString *s1 = @"<?xml version='1.0'?>";
-		
-		NSData *outgoingData = [s1 dataUsingEncoding:NSUTF8StringEncoding];
-		
-		XMPPLogSend(@"SEND: %@", s1);
-		numberOfBytesSent += [outgoingData length];
-		
-		[asyncSocket writeData:outgoingData
-				   withTimeout:TIMEOUT_XMPP_WRITE
-						   tag:TAG_XMPP_WRITE_START];
+        
+        [self sendString:s1 withTag:TAG_XMPP_WRITE_START];
 		
 		[self setDidStartNegotiation:YES];
 	}
@@ -2741,14 +2706,7 @@ enum XMPPStreamConfig
         }
     }
 	
-	NSData *outgoingData = [s2 dataUsingEncoding:NSUTF8StringEncoding];
-	
-	XMPPLogSend(@"SEND: %@", s2);
-	numberOfBytesSent += [outgoingData length];
-	
-	[asyncSocket writeData:outgoingData
-			   withTimeout:TIMEOUT_XMPP_WRITE
-					   tag:TAG_XMPP_WRITE_START];
+    [self sendString:s2 withTag:TAG_XMPP_WRITE_START];
 	
 	// Update status
 	state = STATE_XMPP_OPENING;
@@ -2923,15 +2881,7 @@ enum XMPPStreamConfig
 			[iq addAttributeWithName:@"type" stringValue:@"set"];
 			[iq addChild:bind];
 			
-			NSString *outgoingStr = [iq compactXMLString];
-			NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-			
-			XMPPLogSend(@"SEND: %@", outgoingStr);
-			numberOfBytesSent += [outgoingData length];
-			
-			[asyncSocket writeData:outgoingData
-					   withTimeout:TIMEOUT_XMPP_WRITE
-							   tag:TAG_XMPP_WRITE_STREAM];
+			[self doSendElement:iq withTag:TAG_XMPP_WRITE_STREAM];
 		}
 		else
 		{
@@ -2943,15 +2893,7 @@ enum XMPPStreamConfig
 			[iq addAttributeWithName:@"type" stringValue:@"set"];
 			[iq addChild:bind];
 			
-			NSString *outgoingStr = [iq compactXMLString];
-			NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-			
-			XMPPLogSend(@"SEND: %@", outgoingStr);
-			numberOfBytesSent += [outgoingData length];
-			
-			[asyncSocket writeData:outgoingData
-					   withTimeout:TIMEOUT_XMPP_WRITE
-							   tag:TAG_XMPP_WRITE_STREAM];
+			[self doSendElement:iq withTag:TAG_XMPP_WRITE_STREAM];
 		}
 		
 		// We're already listening for the response...
@@ -3133,15 +3075,7 @@ enum XMPPStreamConfig
 			[iq addAttributeWithName:@"type" stringValue:@"set"];
 			[iq addChild:session];
 			
-			NSString *outgoingStr = [iq compactXMLString];
-			NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-			
-			XMPPLogSend(@"SEND: %@", outgoingStr);
-			numberOfBytesSent += [outgoingData length];
-			
-			[asyncSocket writeData:outgoingData
-					   withTimeout:TIMEOUT_XMPP_WRITE
-							   tag:TAG_XMPP_WRITE_STREAM];
+			[self doSendElement:iq withTag:TAG_XMPP_WRITE_STREAM];
 			
 			// Update state
 			state = STATE_XMPP_START_SESSION;
@@ -3239,15 +3173,7 @@ enum XMPPStreamConfig
 		XMPPIQ *iq = [XMPPIQ iqWithType:@"set"];
 		[iq addChild:bind];
 		
-		NSString *outgoingStr = [iq compactXMLString];
-		NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-		
-		XMPPLogSend(@"SEND: %@", outgoingStr);
-		numberOfBytesSent += [outgoingData length];
-		
-		[asyncSocket writeData:outgoingData
-		           withTimeout:TIMEOUT_XMPP_WRITE
-		                   tag:TAG_XMPP_WRITE_STREAM];
+		[self doSendElement:iq withTag:TAG_XMPP_WRITE_STREAM];
 		
 		// The state remains in STATE_XMPP_BINDING
 	}
@@ -3260,15 +3186,7 @@ enum XMPPStreamConfig
 		XMPPIQ *iq = [XMPPIQ iqWithType:@"set"];
 		[iq addChild:bind];
 		
-		NSString *outgoingStr = [iq compactXMLString];
-		NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-		
-		XMPPLogSend(@"SEND: %@", outgoingStr);
-		numberOfBytesSent += [outgoingData length];
-		
-		[asyncSocket writeData:outgoingData
-		           withTimeout:TIMEOUT_XMPP_WRITE
-		                   tag:TAG_XMPP_WRITE_STREAM];
+		[self doSendElement:iq withTag:TAG_XMPP_WRITE_STREAM];
 		
 		// The state remains in STATE_XMPP_BINDING
 	}
@@ -3609,15 +3527,7 @@ enum XMPPStreamConfig
 			
 			[multicastDelegate xmppStream:self willSendP2PFeatures:streamFeatures];
 			
-			NSString *outgoingStr = [streamFeatures compactXMLString];
-			NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-			
-			XMPPLogSend(@"SEND: %@", outgoingStr);
-			numberOfBytesSent += [outgoingData length];
-			
-			[asyncSocket writeData:outgoingData
-			           withTimeout:TIMEOUT_XMPP_WRITE
-			                   tag:TAG_XMPP_WRITE_STREAM];
+			[self doSendElement:streamFeatures withTag:TAG_XMPP_WRITE_STREAM];
 		}
 		
 		// Make sure the delegate didn't disconnect us in the xmppStream:willSendP2PFeatures: method.
@@ -3653,19 +3563,13 @@ enum XMPPStreamConfig
 			[iq addAttributeWithName:@"type" stringValue:@"get"];
 			[iq addChild:query];
 			
-			NSString *outgoingStr = [iq compactXMLString];
-			NSData *outgoingData = [outgoingStr dataUsingEncoding:NSUTF8StringEncoding];
-			
-			XMPPLogSend(@"SEND: %@", outgoingStr);
-			numberOfBytesSent += [outgoingData length];
-			
-			[asyncSocket writeData:outgoingData
-			           withTimeout:TIMEOUT_XMPP_WRITE
-			                   tag:TAG_XMPP_WRITE_STREAM];
+            [self doSendElement:iq withTag:TAG_XMPP_WRITE_STREAM];
 			
 			// Now wait for the response IQ
 		}
 	}
+    
+    [multicastDelegate xmppStream:self didReceiveElement:root];
 }
 
 - (void)xmppParser:(XMPPParser *)sender didReadElement:(NSXMLElement *)element
@@ -3682,6 +3586,7 @@ enum XMPPStreamConfig
 	if ([elementName isEqualToString:@"stream:error"] || [elementName isEqualToString:@"error"])
 	{
 		[multicastDelegate xmppStream:self didReceiveError:element];
+        [multicastDelegate xmppStream:self didReceiveElement:element];
 		
 		return;
 	}
@@ -3744,6 +3649,8 @@ enum XMPPStreamConfig
 			[multicastDelegate xmppStream:self didReceiveError:element];
 		}
 	}
+    
+    [multicastDelegate xmppStream:self didReceiveElement:element];
 }
 
 - (void)xmppParserDidParseData:(XMPPParser *)sender
