@@ -45,7 +45,7 @@ extern NSString *const XMPPStreamDidChangeMyJIDNotification;
 **/
 
 @property (readonly) dispatch_queue_t xmppQueue;
-@property (readonly) XMPPStreamState state;
+@property (readwrite) XMPPStreamState state;
 
 /**
  * This method is for use by xmpp authentication mechanism classes.

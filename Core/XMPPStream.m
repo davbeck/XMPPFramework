@@ -207,7 +207,7 @@ enum XMPPStreamConfig
 	
 	multicastDelegate = (GCDMulticastDelegate <XMPPStreamDelegate> *)[[GCDMulticastDelegate alloc] init];
 	
-	state = STATE_XMPP_DISCONNECTED;
+	self.state = STATE_XMPP_DISCONNECTED;
 	
 	flags = 0;
 	config = 0;
@@ -329,6 +329,25 @@ enum XMPPStreamConfig
 		dispatch_sync(xmppQueue, block);
 	
 	return result;
+}
+
+- (void)setState:(XMPPStreamState)newState
+{
+    if (dispatch_get_current_queue() == xmppQueue)
+	{
+        state = newState;
+	}
+	else
+	{
+		dispatch_async(xmppQueue, ^{
+			state = newState;
+		});
+	}
+}
+
++ (NSSet *)keyPathsForValuesAffectingIsConnected
+{
+    return [NSSet setWithObject:@"state"];
 }
 
 - (NSString *)hostName
@@ -939,7 +958,7 @@ enum XMPPStreamConfig
 		{
 			// Resolve the hostName via myJID SRV resolution
 			
-			state = STATE_XMPP_RESOLVING_SRV;
+			self.state = STATE_XMPP_RESOLVING_SRV;
 			
 			srvResolver = [[XMPPSRVResolver alloc] initWithdDelegate:self delegateQueue:xmppQueue resolverQueue:NULL];
 			
@@ -956,7 +975,7 @@ enum XMPPStreamConfig
 		{
 			// Open TCP connection to the configured hostName.
 			
-			state = STATE_XMPP_CONNECTING;
+			self.state = STATE_XMPP_CONNECTING;
 			
 			NSError *connectErr = nil;
 			result = [self connectToHost:hostName onPort:hostPort error:&connectErr];
@@ -964,7 +983,7 @@ enum XMPPStreamConfig
 			if (!result)
 			{
 				err = connectErr;
-				state = STATE_XMPP_DISCONNECTED;
+				self.state = STATE_XMPP_DISCONNECTED;
 			}
 		}
 	}};
@@ -1071,7 +1090,7 @@ enum XMPPStreamConfig
 		[multicastDelegate xmppStreamWillConnect:self];
 
 		// Update state
-		state = STATE_XMPP_CONNECTING;
+		self.state = STATE_XMPP_CONNECTING;
 		
 		// Initailize socket
 		asyncSocket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:xmppQueue];
@@ -1082,7 +1101,7 @@ enum XMPPStreamConfig
 		if (result == NO)
 		{
 			err = connectErr;
-			state = STATE_XMPP_DISCONNECTED;
+			self.state = STATE_XMPP_DISCONNECTED;
 		}
 		else if ([self resetByteCountPerConnection])
 		{
@@ -1164,7 +1183,7 @@ enum XMPPStreamConfig
 		[multicastDelegate xmppStream:self socketDidConnect:asyncSocket];
 
 		// Update state
-		state = STATE_XMPP_CONNECTING;
+		self.state = STATE_XMPP_CONNECTING;
 		
 		if ([self resetByteCountPerConnection])
 		{
@@ -1209,7 +1228,7 @@ enum XMPPStreamConfig
 				[srvResolver stop];
 				srvResolver = nil;
 				
-				state = STATE_XMPP_DISCONNECTED;
+				self.state = STATE_XMPP_DISCONNECTED;
 				
 				[multicastDelegate xmppStreamDidDisconnect:self withError:nil];
 			}
@@ -1243,7 +1262,7 @@ enum XMPPStreamConfig
 				[srvResolver stop];
 				srvResolver = nil;
 				
-				state = STATE_XMPP_DISCONNECTED;
+				self.state = STATE_XMPP_DISCONNECTED;
 				
 				[multicastDelegate xmppStreamDidDisconnect:self withError:nil];
 			}
@@ -1383,7 +1402,7 @@ enum XMPPStreamConfig
 		}
 		
 		// Update state
-		state = STATE_XMPP_STARTTLS_1;
+		self.state = STATE_XMPP_STARTTLS_1;
 		
 		// Send the startTLS XML request
 		[self sendStartTLSRequest];
@@ -1499,7 +1518,7 @@ enum XMPPStreamConfig
 		[self doSendElement:iqElement withTag:TAG_XMPP_WRITE_STREAM];
 		
 		// Update state
-		state = STATE_XMPP_REGISTERING;
+		self.state = STATE_XMPP_REGISTERING;
 		
 	}};
 	
@@ -1624,7 +1643,7 @@ enum XMPPStreamConfig
 		// Change state.
 		// We do this now because when we invoke the start method below,
 		// it may in turn invoke our sendAuthElement method, which expects us to be in STATE_XMPP_AUTH.
-		state = STATE_XMPP_AUTH;
+		self.state = STATE_XMPP_AUTH;
 		
 		if ([inAuth start:&err])
 		{
@@ -1635,7 +1654,7 @@ enum XMPPStreamConfig
 		{
 			// Unable to start authentication for some reason.
 			// Revert back to connected state.
-			state = STATE_XMPP_CONNECTED;
+			self.state = STATE_XMPP_CONNECTED;
 		}
 	}};
 	
@@ -2709,7 +2728,7 @@ enum XMPPStreamConfig
     [self sendString:s2 withTag:TAG_XMPP_WRITE_START];
 	
 	// Update status
-	state = STATE_XMPP_OPENING;
+	self.state = STATE_XMPP_OPENING;
 }
 
 /**
@@ -2722,7 +2741,7 @@ enum XMPPStreamConfig
 	XMPPLogTrace();
 	
 	// Update state (part 2 - prompting delegates)
-	state = STATE_XMPP_STARTTLS_2;
+	self.state = STATE_XMPP_STARTTLS_2;
 	
 	// Create a mutable dictionary for security settings
 	NSMutableDictionary *settings = [NSMutableDictionary dictionaryWithCapacity:5];
@@ -2842,7 +2861,7 @@ enum XMPPStreamConfig
 			// TLS is required for this connection
 			
 			// Update state
-			state = STATE_XMPP_STARTTLS_1;
+			self.state = STATE_XMPP_STARTTLS_1;
 			
 			// Send the startTLS XML request
 			[self sendStartTLSRequest];
@@ -2863,7 +2882,7 @@ enum XMPPStreamConfig
 	if (f_bind)
 	{
 		// Binding is required for this connection
-		state = STATE_XMPP_BINDING;
+		self.state = STATE_XMPP_BINDING;
 		
 		NSString *requestedResource = [myJID_setByClient resource];
 		
@@ -2901,7 +2920,7 @@ enum XMPPStreamConfig
 	}
 	
 	// It looks like all has gone well, and the connection should be ready to use now
-	state = STATE_XMPP_CONNECTED;
+	self.state = STATE_XMPP_CONNECTED;
 	
 	if (![self isAuthenticated])
 	{
@@ -2946,14 +2965,14 @@ enum XMPPStreamConfig
 	if ([[response attributeStringValueForName:@"type"] isEqualToString:@"error"])
 	{
 		// Revert back to connected state (from authenticating state)
-		state = STATE_XMPP_CONNECTED;
+		self.state = STATE_XMPP_CONNECTED;
 		
 		[multicastDelegate xmppStream:self didNotRegister:response];
 	}
 	else
 	{
 		// Revert back to connected state (from authenticating state)
-		state = STATE_XMPP_CONNECTED;
+		self.state = STATE_XMPP_CONNECTED;
 		
 		[multicastDelegate xmppStreamDidRegister:self];
 	}
@@ -3006,7 +3025,7 @@ enum XMPPStreamConfig
 		else
 		{
 			// Revert back to connected state (from authenticating state)
-			state = STATE_XMPP_CONNECTED;
+			self.state = STATE_XMPP_CONNECTED;
 			
 			[multicastDelegate xmppStreamDidAuthenticate:self];
 		}
@@ -3018,7 +3037,7 @@ enum XMPPStreamConfig
 	else if (result == XMPP_AUTH_FAIL)
 	{
 		// Revert back to connected state (from authenticating state)
-		state = STATE_XMPP_CONNECTED;
+		self.state = STATE_XMPP_CONNECTED;
 		
 		// Notify delegate
 		[multicastDelegate xmppStream:self didNotAuthenticate:authResponse];
@@ -3078,12 +3097,12 @@ enum XMPPStreamConfig
 			[self doSendElement:iq withTag:TAG_XMPP_WRITE_STREAM];
 			
 			// Update state
-			state = STATE_XMPP_START_SESSION;
+			self.state = STATE_XMPP_START_SESSION;
 		}
 		else
 		{
 			// Revert back to connected state (from binding state)
-			state = STATE_XMPP_CONNECTED;
+			self.state = STATE_XMPP_CONNECTED;
 			
 			[multicastDelegate xmppStreamDidAuthenticate:self];
 		}
@@ -3201,14 +3220,14 @@ enum XMPPStreamConfig
 	if ([[response attributeStringValueForName:@"type"] isEqualToString:@"result"])
 	{
 		// Revert back to connected state (from start session state)
-		state = STATE_XMPP_CONNECTED;
+		self.state = STATE_XMPP_CONNECTED;
 		
 		[multicastDelegate xmppStreamDidAuthenticate:self];
 	}
 	else
 	{
 		// Revert back to connected state (from start session state)
-		state = STATE_XMPP_CONNECTED;
+		self.state = STATE_XMPP_CONNECTED;
 		
 		[multicastDelegate xmppStream:self didNotAuthenticate:response];
 	}
@@ -3260,7 +3279,7 @@ enum XMPPStreamConfig
 	
 	if (!success)
 	{
-		state = STATE_XMPP_DISCONNECTED;
+		self.state = STATE_XMPP_DISCONNECTED;
 		
 		[multicastDelegate xmppStreamDidDisconnect:self withError:connectError];
 	}
@@ -3277,7 +3296,7 @@ enum XMPPStreamConfig
 	srvResults = [records copy];
 	srvResultsIndex = 0;
 	
-	state = STATE_XMPP_CONNECTING;
+	self.state = STATE_XMPP_CONNECTING;
 	
 	[self tryNextSrvResult];
 }
@@ -3290,7 +3309,7 @@ enum XMPPStreamConfig
 	
 	XMPPLogTrace();
 	
-	state = STATE_XMPP_CONNECTING;
+	self.state = STATE_XMPP_CONNECTING;
 	
 	[self tryNextSrvResult];
 }
@@ -3431,7 +3450,7 @@ enum XMPPStreamConfig
 	else
 	{
 		// Update state
-		state = STATE_XMPP_DISCONNECTED;
+		self.state = STATE_XMPP_DISCONNECTED;
 		
 		// Release the parser (to free underlying resources)
 		[parser setDelegate:nil delegateQueue:NULL];
@@ -3509,7 +3528,7 @@ enum XMPPStreamConfig
 		// But if we're the initiator, we can't depend on receiving their features.
 		
 		// Either way, we're connected at this point.
-		state = STATE_XMPP_CONNECTED;
+		self.state = STATE_XMPP_CONNECTED;
 		
 		if ([self isP2PRecipient])
 		{
@@ -3543,7 +3562,7 @@ enum XMPPStreamConfig
 		if ([self serverXmppStreamVersionNumber] >= 1.0)
 		{
 			// Update state - we're now onto stream negotiations
-			state = STATE_XMPP_NEGOTIATING;
+			self.state = STATE_XMPP_NEGOTIATING;
 			
 			// Note: We're waiting for the <stream:features> now
 		}
@@ -3555,7 +3574,7 @@ enum XMPPStreamConfig
 			// so we'll use the jabber:iq:auth namespace, which was used prior to the RFC spec.
 			
 			// Update state - we're onto psuedo negotiation
-			state = STATE_XMPP_NEGOTIATING;
+			self.state = STATE_XMPP_NEGOTIATING;
 			
 			NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"jabber:iq:auth"];
 			
