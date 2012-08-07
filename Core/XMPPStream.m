@@ -345,7 +345,12 @@ enum XMPPStreamConfig
 	}
 }
 
-+ (NSSet *)keyPathsForValuesAffectingIsConnected
++ (NSSet *)keyPathsForValuesAffectingConnected
+{
+    return [NSSet setWithObject:@"state"];
+}
+
++ (NSSet *)keyPathsForValuesAffectingDisconnected
 {
     return [NSSet setWithObject:@"state"];
 }

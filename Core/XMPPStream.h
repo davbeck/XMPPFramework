@@ -232,7 +232,7 @@ typedef enum XMPPStreamErrorCode XMPPStreamErrorCode;
  * Returns YES if the connection is closed, and thus no stream is open.
  * If the stream is neither disconnected, nor connected, then a connection is currently being established.
 **/
-- (BOOL)isDisconnected;
+@property (readonly, getter = isDisconnected) BOOL disconnected;
 
 /**
  * Returns YES if the connection is open, and the stream has been properly established.
@@ -240,7 +240,7 @@ typedef enum XMPPStreamErrorCode XMPPStreamErrorCode;
  * 
  * If this method returns YES, then it is ready for you to start sending and receiving elements.
 **/
-- (BOOL)isConnected;
+@property (readonly, getter = isConnected) BOOL connected;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark Connect & Disconnect
