@@ -5,7 +5,7 @@
 //
 
 #import "XMPPPubSub.h"
-#import "XMPPFramework.h"
+#import "XMPP.h"
 
 #if ! __has_feature(objc_arc)
 #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
@@ -101,26 +101,21 @@
 					[multicastDelegate xmppPubSub:self didSubscribe:iq];
 					return YES;
 				}
+			} else {
+				//Check if it was a publish
+				NSString *elementID = [iq attributeStringValueForName:@"id"];
+				NSString *opType = [[elementID componentsSeparatedByString:@":"] lastObject];
+				
+				if ([opType isEqualToString:@"publish_node"]) {
+					[multicastDelegate xmppPubSub:self didPublish:iq];
+					return YES;
+					
+				} else if([opType isEqualToString:@"unsubscribe_node"]) {
+					[multicastDelegate xmppPubSub:self didUnsubscribe:iq];
+					return YES;
+				}
 			}
-		} else {
-            //Check if it was a publish
-            NSString *elementID = [iq attributeStringValueForName:@"id"];
-            if (elementID) {
-                NSArray * elementIDComp = [elementID componentsSeparatedByString:@":"];
-                if (elementIDComp > 0) {
-                    NSString * opType = [elementIDComp objectAtIndex:1];
-                    
-                    if ([opType isEqualToString:@"publish_node"]) {
-                        [multicastDelegate xmppPubSub:self didPublish:iq];
-                        return YES;
-                        
-                    } else if([opType isEqualToString:@"unsubscribe_node"]) {
-                        [multicastDelegate xmppPubSub:self didUnsubscribe:iq];
-                        return YES;
-                    }
-                }
-            }
-        }
+		}
 		
 		[multicastDelegate xmppPubSub:self didReceiveResult:iq];
 		return YES;
