@@ -445,7 +445,12 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (NSString *)publishToNode:(NSString *)node entry:(NSXMLElement *)entry {
-    //<iq type='set' from='hamlet@denmark.lit/blogbot' to='pubsub.shakespeare.lit' id='publish1'>
+    return [self publishToNode:node entry:entry result:nil];
+}
+
+- (NSString *)publishToNode:(NSString*)node entry:(NSXMLElement*)entry result:(XMPPIQResultBlock)result
+{
+	//<iq type='set' from='hamlet@denmark.lit/blogbot' to='pubsub.shakespeare.lit' id='publish1'>
     //  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
     //      <publish node='princely_musings'>
     //          <item id='bnd81g37d61f49fgn581'>
@@ -473,8 +478,8 @@
     [publish addChild:item];
     [pubsub addChild:publish];
     [iq addChild:pubsub];
-
-	[xmppStream sendElement:iq];
+	
+	[xmppStream sendIQ:iq result:result];
     
 	return sid;
 }

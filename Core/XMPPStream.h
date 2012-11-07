@@ -37,6 +37,8 @@ enum XMPPStreamErrorCode
 };
 typedef enum XMPPStreamErrorCode XMPPStreamErrorCode;
 
+typedef void(^XMPPIQResultBlock)(XMPPIQ *resultIQ, NSError *error);
+
 
 @interface XMPPStream : NSObject <GCDAsyncSocketDelegate>
 
@@ -512,6 +514,12 @@ typedef enum XMPPStreamErrorCode XMPPStreamErrorCode;
  * Even if you close the xmpp stream after this point, the OS will still do everything it can to send the data.
 **/
 - (void)sendElement:(NSXMLElement *)element andGetReceipt:(XMPPElementReceipt **)receiptPtr;
+
+/**
+ * Just like the sendElement: method above,
+ * but allows you to get a block callback for the IQ response
+ **/
+- (void)sendIQ:(XMPPIQ *)iq result:(XMPPIQResultBlock)resultBlock;
 
 /**
  * Fetches and resends the myPresence element (if available) in a single atomic operation.
