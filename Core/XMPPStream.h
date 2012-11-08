@@ -25,6 +25,8 @@
   #define DEFAULT_KEEPALIVE_INTERVAL 300.0 //  5 Minutes
 #endif
 
+#define DEFAULT_XMPP_PORT 5222
+
 extern NSString *const XMPPStreamErrorDomain;
 
 enum XMPPStreamErrorCode

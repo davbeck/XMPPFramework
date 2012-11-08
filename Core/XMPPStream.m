@@ -215,7 +215,7 @@ enum XMPPStreamConfig
 	numberOfBytesSent = 0;
 	numberOfBytesReceived = 0;
 	
-	hostPort = 5222;
+	hostPort = DEFAULT_XMPP_PORT;
 	keepAliveInterval = DEFAULT_KEEPALIVE_INTERVAL;
 	keepAliveData = [@" " dataUsingEncoding:NSUTF8StringEncoding];
 	
@@ -983,7 +983,7 @@ enum XMPPStreamConfig
 			self.state = STATE_XMPP_CONNECTING;
 			
 			NSError *connectErr = nil;
-			result = [self connectToHost:hostName onPort:hostPort error:&connectErr];
+			result = [self connectToHost:hostName onPort:(hostPort == 0 ? DEFAULT_XMPP_PORT : hostPort) error:&connectErr];
 			
 			if (!result)
 			{
@@ -3279,7 +3279,7 @@ enum XMPPStreamConfig
 		// 
 		// In other words, just try connecting to the domain specified in the JID.
 		
-		success = [self connectToHost:[myJID_setByClient domain] onPort:5222 error:&connectError];
+		success = [self connectToHost:[myJID_setByClient domain] onPort:DEFAULT_XMPP_PORT error:&connectError];
 	}
 	
 	if (!success)
