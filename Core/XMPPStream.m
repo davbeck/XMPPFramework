@@ -4,6 +4,7 @@
 #import "XMPPInternal.h"
 #import "XMPPSRVResolver.h"
 #import "NSData+XMPP.h"
+#import "XMPPBlockDelegate.h"
 
 #import <objc/runtime.h>
 #import <libkern/OSAtomic.h>
@@ -2248,6 +2249,25 @@ enum XMPPStreamConfig
 		
 		*receiptPtr = receipt;
 	}
+}
+
+/**
+ * Just like the sendElement: method above,
+ * but allows you to get a block callback for the IQ response
+ **/
+- (void)sendIQ:(XMPPIQ *)iq result:(XMPPIQResultBlock)resultBlock
+{
+	if (resultBlock != nil) {
+		NSString *elementId = [iq attributeStringValueForName:@"id"];
+		if (elementId == nil) {
+			elementId = [self generateUUID];
+			[iq addAttributeWithName:@"id" stringValue:elementId];
+		}
+		
+		[XMPPBlockDelegate delegateWithStream:self iqId:elementId resultBlock:resultBlock];
+	}
+	
+	[self sendElement:iq];
 }
 
 /**

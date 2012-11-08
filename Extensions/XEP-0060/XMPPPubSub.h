@@ -7,12 +7,12 @@
 
 #import <Foundation/Foundation.h>
 #import "XMPPModule.h"
+#import "XMPPStream.h"
 
 #if TARGET_OS_IPHONE
 #import "DDXML.h"
 #endif
 
-@class XMPPStream;
 @class XMPPJID;
 @class XMPPIQ;
 @class XMPPMessage;
@@ -35,6 +35,7 @@
 - (NSString *)configureNode:(NSString *)node;
 - (NSString *)allItemsForNode:(NSString *)node;
 - (NSString *)publishToNode:(NSString*)node entry:(NSXMLElement*)entry;
+- (NSString *)publishToNode:(NSString*)node entry:(NSXMLElement*)entry result:(XMPPIQResultBlock)result;
 - (NSString *)discoverItemsForNode:(NSString*)node;
 - (NSString *)getSubscriptions;
 - (NSString *)getSubscriptionsForNode:(NSString*)node;

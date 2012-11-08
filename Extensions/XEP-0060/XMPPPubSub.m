@@ -5,7 +5,7 @@
 //
 
 #import "XMPPPubSub.h"
-#import "XMPPFramework.h"
+#import "XMPP.h"
 
 #if ! __has_feature(objc_arc)
 #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
@@ -101,26 +101,21 @@
 					[multicastDelegate xmppPubSub:self didSubscribe:iq];
 					return YES;
 				}
+			} else {
+				//Check if it was a publish
+				NSString *elementID = [iq attributeStringValueForName:@"id"];
+				NSString *opType = [[elementID componentsSeparatedByString:@":"] lastObject];
+				
+				if ([opType isEqualToString:@"publish_node"]) {
+					[multicastDelegate xmppPubSub:self didPublish:iq];
+					return YES;
+					
+				} else if([opType isEqualToString:@"unsubscribe_node"]) {
+					[multicastDelegate xmppPubSub:self didUnsubscribe:iq];
+					return YES;
+				}
 			}
-		} else {
-            //Check if it was a publish
-            NSString *elementID = [iq attributeStringValueForName:@"id"];
-            if (elementID) {
-                NSArray * elementIDComp = [elementID componentsSeparatedByString:@":"];
-                if (elementIDComp > 0) {
-                    NSString * opType = [elementIDComp objectAtIndex:1];
-                    
-                    if ([opType isEqualToString:@"publish_node"]) {
-                        [multicastDelegate xmppPubSub:self didPublish:iq];
-                        return YES;
-                        
-                    } else if([opType isEqualToString:@"unsubscribe_node"]) {
-                        [multicastDelegate xmppPubSub:self didUnsubscribe:iq];
-                        return YES;
-                    }
-                }
-            }
-        }
+		}
 		
 		[multicastDelegate xmppPubSub:self didReceiveResult:iq];
 		return YES;
@@ -450,7 +445,12 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 - (NSString *)publishToNode:(NSString *)node entry:(NSXMLElement *)entry {
-    //<iq type='set' from='hamlet@denmark.lit/blogbot' to='pubsub.shakespeare.lit' id='publish1'>
+    return [self publishToNode:node entry:entry result:nil];
+}
+
+- (NSString *)publishToNode:(NSString*)node entry:(NSXMLElement*)entry result:(XMPPIQResultBlock)result
+{
+	//<iq type='set' from='hamlet@denmark.lit/blogbot' to='pubsub.shakespeare.lit' id='publish1'>
     //  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
     //      <publish node='princely_musings'>
     //          <item id='bnd81g37d61f49fgn581'>
@@ -478,8 +478,8 @@
     [publish addChild:item];
     [pubsub addChild:publish];
     [iq addChild:pubsub];
-
-	[xmppStream sendElement:iq];
+	
+	[xmppStream sendIQ:iq result:result];
     
 	return sid;
 }
